@@ -2,7 +2,8 @@ const fs = require("fs");
 const { mdo } = require("@masaeedu/do");
 const {
   Cont,
-  Unit: { unit }
+  Unit: { unit },
+  Either
 } = require("@masaeedu/fp");
 const FreeT = require("./freet");
 
@@ -29,11 +30,46 @@ const mkReadStream = path => cb => {
 
 // :: NodeRStream -> Cont! ()
 const waitForReadableCont = rs => cb => {
-  return rs.once("readable", cb);
+  return rs.once("readable", () => {
+    return cb();
+  });
 };
 
+let counter = 0;
+
+// :: NodeRStream -> Cont! ()
+const waitForEndCont = rs => cb => {
+  return rs.once("end", () => {
+    return cb();
+  });
+};
+
+// :: Cont! a -> Cont! b -> Cont! (Either a b)
+const race = conta => contb => cb => {
+  let res = undefined;
+  conta(a => {
+    if (res === undefined) {
+      return cb(Either.Left(a));
+    }
+  });
+  contb(b => {
+    // console.log("readable");
+    if (res === undefined) {
+      return cb(Either.Right(b));
+    }
+  });
+};
+
+// :: NodeRSTream -> Cont! (Either () ())
+const endOrReadableCont = rs =>
+  race(waitForEndCont(rs))(waitForReadableCont(rs));
+
 // :: Int -> NodeRStream -> Cont! Buffer
-const read = chunkSize => rs => cb => cb(rs.read(chunkSize));
+const read = chunkSize => rs => cb => {
+  const chunk = rs.read();
+  //console.log("read chunk: ", chunk);
+  return cb(chunk);
+};
 
 // Misc
 
@@ -52,6 +88,10 @@ const readByte = M => rs => M.lift(Cont)(read(1)(rs));
 
 // :: (Monad (t Cont!), MonadTrans t) -> NodeRStream -> t Cont! ()
 const waitForReadable = M => rs => M.lift(Cont)(waitForReadableCont(rs));
+
+const waitForEnd = M => rs => M.lift(Cont)(waitForEndCont(rs));
+
+const endOrReadable = M => rs => M.lift(Cont)(endOrReadableCont(rs));
 
 // :: (Monad (t Cont!), MonadTrans t) -> t Cont! a -> t Cont! a
 const foreverC = M => act => {
@@ -80,6 +120,7 @@ module.exports = {
   immediately,
   readByte,
   waitForReadable,
+  endOrReadable,
   foreverC,
   iterateUntilC
 };

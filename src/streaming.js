@@ -1,6 +1,6 @@
 const FreeT = require("./freet");
 const Of = require("./of");
-const { Unit, Arr, Cont } = require("@masaeedu/fp");
+const { Unit, Arr, Cont, Either } = require("@masaeedu/fp");
 const { mdo } = require("@masaeedu/do");
 const util = require("./util");
 
@@ -39,13 +39,37 @@ const takeWhile = pred => stream => pure => bind =>
   });
 
 // :: NodeRStream -> Stream Byte Cont! ()
+// const readBytes = rs => {
+//   const br = util.foreverC(FreeT)(
+//     FreeT.chain(yields)(util.readByte(FreeT)(rs))
+//   );
+//   return FreeT.chain(_ => takeWhile(b => !util.isNull(b))(br))(
+//     util.waitForReadable(FreeT)(rs)
+//   );
+// };
+
 const readBytes = rs => {
-  const br = util.foreverC(FreeT)(
-    FreeT.chain(yields)(util.readByte(FreeT)(rs))
-  );
-  return FreeT.chain(_ => takeWhile(b => !util.isNull(b))(br))(
-    util.waitForReadable(FreeT)(rs)
-  );
+  const rec1 = mdo(FreeT)(({ ere }) => [
+    () => util.immediately(FreeT),
+    [ere, () => util.endOrReadable(FreeT)(rs)],
+    () =>
+      Either.match({
+        Left: _ => FreeT.of(unit),
+        Right: _ => {
+          const rec2 = mdo(FreeT)(({ chunk }) => [
+            () => util.immediately(FreeT),
+            [chunk, () => util.readByte(FreeT)(rs)],
+            () =>
+              util.when(FreeT)(!util.isNull(chunk))(() =>
+                mdo(FreeT)(() => [() => yields(chunk), () => rec2])
+              ),
+            () => util.when(FreeT)(util.isNull(chunk))(() => rec1)
+          ]);
+          return rec2;
+        }
+      })(ere)
+  ]);
+  return rec1;
 };
 
 // :: Stream a Cont! r -> Cont! r
