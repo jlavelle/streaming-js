@@ -43,10 +43,7 @@ const readBytes = rs => {
   const br = util.foreverC(FreeT)(
     FreeT.chain(yields)(util.readByte(FreeT)(rs))
   );
-  return mdo(FreeT)(() => [
-    () => util.waitForReadable(FreeT)(rs),
-    () => takeWhile(b => !util.isNull(b))(br)
-  ]);
+  return takeWhile(b => !util.isNull(b))(br);
 };
 
 // :: Stream a Cont! r -> Cont! r

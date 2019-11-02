@@ -33,7 +33,7 @@ const waitForReadableCont = rs => cb => {
 };
 
 // :: Int -> NodeRStream -> Cont! Buffer
-const read = chunkSize => rs => cb => cb(rs.read(chunkSize));
+const read = chunkSize => rs => cb => cb(rs.read());
 
 // Misc
 
@@ -56,7 +56,8 @@ const fromJust = ({ label, values }) => {
 const immediately = M => M.lift(Cont)(setImmediate);
 
 // ::(Monad (t Cont!), MonadTrans t) -> NodeRStream -> t Cont! Byte
-const readByte = M => rs => M.lift(Cont)(read(1)(rs));
+const readByte = M => rs =>
+  M.lift(Cont)(Cont["*>"](waitForReadableCont(rs))(read(1)(rs)));
 
 // :: (Monad (t Cont!), MonadTrans t) -> NodeRStream -> t Cont! ()
 const waitForReadable = M => rs => M.lift(Cont)(waitForReadableCont(rs));

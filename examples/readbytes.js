@@ -1,7 +1,7 @@
 const fs = require("fs");
 const Stream = require("../src/streaming");
 
-const rs = fs.createReadStream("/dev/urandom");
+const rs = fs.createReadStream("./package.json");
 
 const bs = Stream.print(Stream.readBytes(rs));
 
