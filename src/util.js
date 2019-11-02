@@ -33,7 +33,7 @@ const waitForReadableCont = rs => cb => {
 };
 
 // :: Int -> NodeRStream -> Cont! Buffer
-const read = chunkSize => rs => cb => cb(rs.read());
+const read = chunkSize => rs => cb => cb(rs.read(chunkSize));
 
 // Misc
 
@@ -44,20 +44,11 @@ const log = x => cb => {
 
 const isNull = x => x === null || x === undefined;
 
-const fromJust = ({ label, values }) => {
-  if (label === "Nothing") {
-    throw Error("fromJust: Nothing");
-  } else {
-    return values[0];
-  }
-};
-
 // :: (Monad (t Cont!), MonadTrans t) -> t Cont! ()
 const immediately = M => M.lift(Cont)(setImmediate);
 
 // ::(Monad (t Cont!), MonadTrans t) -> NodeRStream -> t Cont! Byte
-const readByte = M => rs =>
-  M.lift(Cont)(Cont["*>"](waitForReadableCont(rs))(read(1)(rs)));
+const readByte = M => rs => M.lift(Cont)(read(1)(rs));
 
 // :: (Monad (t Cont!), MonadTrans t) -> NodeRStream -> t Cont! ()
 const waitForReadable = M => rs => M.lift(Cont)(waitForReadableCont(rs));
@@ -86,7 +77,6 @@ module.exports = {
   read,
   waitForReadableCont,
   log,
-  fromJust,
   immediately,
   readByte,
   waitForReadable,
