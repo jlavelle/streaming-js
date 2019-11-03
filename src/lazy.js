@@ -28,7 +28,7 @@ const Lazy = (() => {
   const ap = f => x => defer(() => force(f)(force(x)));
 
   // Monad
-  const chain = l => f => defer(() => force(f(force(l))));
+  const chain = f => l => defer(() => force(f(force(l))));
 
   return {
     defer,

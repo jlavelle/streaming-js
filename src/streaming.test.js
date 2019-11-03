@@ -3,6 +3,7 @@ const FreeT = require("./freet");
 const fs = require("fs");
 const test = require("ava");
 const util = require("./util");
+const Lazy = require("./lazy");
 const {
   Arr,
   Cont,
@@ -48,9 +49,21 @@ test("unfoldr", t => {
     [1, 2, 3, 4],
     Stream.toList(Identity)(Stream.unfoldr(Identity)(upToFour)(1))
   );
+  const size = 100;
   const x = Stream.unfoldr(Identity)(infinite)(0);
-  const xs = Stream.takeWhile(a => a < 100)(x);
-  t.deepEqual(Arr.range(100), Stream.toList(Identity)(xs));
+  const xs = Stream.takeWhile(a => a < size)(x);
+  t.deepEqual(Arr.range(size), Stream.toList(Identity)(xs));
+});
+
+test("unfoldr - Lazy", t => {
+  t.deepEqual(
+    [1, 2, 3, 4],
+    Lazy.force(
+      Stream.toList(Lazy)(
+        Stream.unfoldr(Lazy)(x => Lazy.defer(() => upToFour(x)))(1)
+      )
+    )
+  );
 });
 
 test.cb("unfoldrC", t => {
