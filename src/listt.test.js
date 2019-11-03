@@ -32,6 +32,13 @@ test("monad", t => {
   );
 });
 
+test("drop", t => {
+  t.deepEqual(
+    [4, 5, 6],
+    List.toArray(List.drop(3)(List.fromFoldable(Arr)([1, 2, 3, 4, 5, 6])))
+  );
+});
+
 test("laziness", t => {
   const a = List.fromFoldable(Arr)(Array(100000).fill(1));
   const lf = List.map(x => x + 1)(a);
@@ -39,8 +46,10 @@ test("laziness", t => {
   const lu = List.unfoldM(b => Maybe.Just([b, b]))(2);
   const la = List.ap(List.of(x => x + 1))(a);
   const lm = List.chain(x => List.of(x + 1))(a);
-  const ex = Array(100).fill(2);
-  const from = l => List.toArray(List.take(100)(l));
+  const size = 100;
+  const drop = 1000; // seems to be the max on my machine :(
+  const ex = Array(size).fill(2);
+  const from = l => List.toArray(List.take(size)(List.drop(drop)(l)));
   t.deepEqual(ex, from(lf));
   t.deepEqual(ex, from(ll));
   t.deepEqual(ex, from(lu));

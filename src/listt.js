@@ -15,7 +15,7 @@ const Lazy = require("./lazy");
 const ListT = M => {
   // type ListT m a = Lazy (m (Maybe (a, ListT m a)))
 
-  const cons = a => as => Lazy.of(M.of(Maybe.Just([a, as])));
+  const cons = a => as => Lazy.defer(() => M.of(Maybe.Just([a, as])));
 
   // :: ListT m a -> m (Maybe a)
   const head = l => M.map(Maybe.map(([a, _]) => a))(Lazy.force(l));
@@ -47,7 +47,7 @@ const ListT = M => {
       )(t1);
     });
 
-  const empty = Lazy.of(M.of(Maybe.Nothing));
+  const empty = Lazy.defer(() => M.of(Maybe.Nothing));
 
   const isEmpty = l =>
     M.map(
@@ -58,7 +58,7 @@ const ListT = M => {
     )(Lazy.force(l));
 
   // Monad
-  const of = a => Lazy.of(M.of(Maybe.of([a, Lazy.of(M.of(Maybe.Nothing))])));
+  const of = a => cons(a)(empty);
 
   const chain = almb => lma =>
     Lazy.defer(() => {
@@ -102,14 +102,26 @@ const ListT = M => {
 
   const take = n => listt => {
     if (n <= 0) return empty;
-    return Lazy.map(
+    return Lazy.defer(() =>
       M.chain(
         Maybe.match({
           Nothing: listt,
           Just: ([a, lt]) => Lazy.force(cons(a)(take(n - 1)(lt)))
         })
-      )
-    )(listt);
+      )(Lazy.force(listt))
+    );
+  };
+
+  const drop = n => listt => {
+    if (n <= 0) return listt;
+    return Lazy.defer(() =>
+      M.chain(
+        Maybe.match({
+          Nothing: empty,
+          Just: ([_, lt]) => Lazy.force(drop(n - 1)(lt))
+        })
+      )(Lazy.force(listt))
+    );
   };
 
   return {
@@ -126,7 +138,8 @@ const ListT = M => {
     unfoldM,
     fromFoldable,
     toArray,
-    take
+    take,
+    drop
   };
 };
 
