@@ -13,6 +13,24 @@ const {
 const FreeT = (() => {
   // type FreeT f m a = forall r. (a -> m r) -> (forall x. (x -> m r) -> f x -> m r) -> m r
 
+  // :: (forall a. f a -> g a) -> FreeT f m a -> FreeT g m a
+  const hoistF = phi => freet => pure => bind =>
+    freet(pure)(xmr => fx => bind(xmr)(phi(fx)));
+
+  // :: Monad m -> Monad n -> (forall a. m a -> n a) -> FreeT f m a -> FreeT f n a
+  const hoistM = M => N => phi => freet => pure => bind =>
+    N.join(
+      phi(
+        freet(x => M.of(pure(x)))(xmr => fx =>
+          M.of(bind(x => N.join(phi(xmr(x))))(fx))
+        )
+      )
+    );
+
+  // :: Monad m -> FreeT (Compose m f) m r -> FreeT f m r
+  const decompose = M => freet => pure => bind =>
+    freet(pure)(xmr => fx => M.chain(bind(xmr))(fx));
+
   // Functor
   const map = f => freet => pure => bind => freet(a => pure(f(a)))(bind);
 
@@ -45,6 +63,9 @@ const FreeT = (() => {
     freet(M.of)(xmr => fx => phi(F.map(xmr)(fx)));
 
   return {
+    hoistF,
+    hoistM,
+    decompose,
     map,
     of,
     ap,
