@@ -17,6 +17,36 @@ const fold = A => done => step => stream =>
     A.map(([b, xp]) => [step(a)(b), xp])(xmr(x))
   );
 
+// Warning: not stack safe
+// :: Monad m -> (s -> m (Either r (a, s))) -> s -> Stream a m r
+const unfoldr = M => step => seed => pure => bind => {
+  const rec = s =>
+    M.chain(
+      Either.match({
+        Left: r => pure(r),
+        Right: ([a, ns]) => bind(x => rec(x))([a, ns])
+      })
+    )(step(s));
+
+  return rec(seed);
+};
+
+// TODO: Make this more general
+// :: (s -> t Cont! (Either r (a, s))) -> s -> Stream a (t Cont!) r
+const unfoldrC = step => seed => pure => bind => {
+  const rec = s =>
+    mdo(Cont)(({ e }) => [
+      () => setImmediate,
+      [e, () => step(s)],
+      () =>
+        Either.match({
+          Left: r => pure(r),
+          Right: ([a, ns]) => bind(x => rec(x))([a, ns])
+        })(e)
+    ]);
+  return rec(seed);
+};
+
 // :: Applicative m -> Stream a m r -> m [a]
 const toList = A => stream =>
   A.map(Of.first)(fold(A)(_ => [])(Arr.Cons)(stream));
@@ -71,6 +101,8 @@ const print = stream =>
 module.exports = {
   yields,
   fold,
+  unfoldr,
+  unfoldrC,
   toList,
   each,
   filter,
