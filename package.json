@@ -14,7 +14,8 @@
     "@masaeedu/fp": "https://github.com/jlavelle/fp.git#perf2"
   },
   "devDependencies": {
-    "ava": "^2.4.0"
+    "ava": "^2.4.0",
+    "tmp": "^0.1.0"
   },
   "ava": {
     "files": [

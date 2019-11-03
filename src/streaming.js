@@ -38,38 +38,27 @@ const takeWhile = pred => stream => pure => bind =>
     else return pure(unit);
   });
 
-// :: NodeRStream -> Stream Byte Cont! ()
-// const readBytes = rs => {
-//   const br = util.foreverC(FreeT)(
-//     FreeT.chain(yields)(util.readByte(FreeT)(rs))
-//   );
-//   return FreeT.chain(_ => takeWhile(b => !util.isNull(b))(br))(
-//     util.waitForReadable(FreeT)(rs)
-//   );
-// };
-
+//:: NodeRStream -> Stream Byte Cont! ()
 const readBytes = rs => {
-  const rec1 = mdo(FreeT)(({ ere }) => [
+  const whileReadable = mdo(FreeT)(({ chunk }) => [
     () => util.immediately(FreeT),
-    [ere, () => util.endOrReadable(FreeT)(rs)],
+    [chunk, () => util.readByte(FreeT)(rs)],
+    () => {
+      if (util.isNull(chunk)) return endOrRead;
+      else return FreeT.chain(_ => whileReadable)(yields(chunk));
+    }
+  ]);
+
+  const endOrRead = mdo(FreeT)(({ status }) => [
+    [status, () => util.endOrReadable(FreeT)(rs)],
     () =>
       Either.match({
         Left: _ => FreeT.of(unit),
-        Right: _ => {
-          const rec2 = mdo(FreeT)(({ chunk }) => [
-            () => util.immediately(FreeT),
-            [chunk, () => util.readByte(FreeT)(rs)],
-            () =>
-              util.when(FreeT)(!util.isNull(chunk))(() =>
-                mdo(FreeT)(() => [() => yields(chunk), () => rec2])
-              ),
-            () => util.when(FreeT)(util.isNull(chunk))(() => rec1)
-          ]);
-          return rec2;
-        }
-      })(ere)
+        Right: _ => whileReadable
+      })(status)
   ]);
-  return rec1;
+
+  return endOrRead;
 };
 
 // :: Stream a Cont! r -> Cont! r

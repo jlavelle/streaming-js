@@ -1,5 +1,6 @@
 const fs = require("fs");
 const { mdo } = require("@masaeedu/do");
+const tmp = require("tmp");
 const {
   Cont,
   Unit: { unit },
@@ -31,30 +32,41 @@ const mkReadStream = path => cb => {
 // :: NodeRStream -> Cont! ()
 const waitForReadableCont = rs => cb => {
   return rs.once("readable", () => {
+    //console.log("is readable");
     return cb();
   });
 };
-
-let counter = 0;
 
 // :: NodeRStream -> Cont! ()
 const waitForEndCont = rs => cb => {
   return rs.once("end", () => {
+    //console.log("is ended");
     return cb();
   });
 };
 
+let c = 0;
+let r = [];
+
 // :: Cont! a -> Cont! b -> Cont! (Either a b)
 const race = conta => contb => cb => {
+  const ctx = c;
+  c += 1;
   let res = undefined;
+  //console.log("race");
   conta(a => {
     if (res === undefined) {
+      res = "Left";
+      r.push(["end", ctx]);
+      //console.log(r);
       return cb(Either.Left(a));
     }
   });
   contb(b => {
-    // console.log("readable");
     if (res === undefined) {
+      res = "Right";
+      r.push(["readable", ctx]);
+      //console.log(r);
       return cb(Either.Right(b));
     }
   });
@@ -66,7 +78,7 @@ const endOrReadableCont = rs =>
 
 // :: Int -> NodeRStream -> Cont! Buffer
 const read = chunkSize => rs => cb => {
-  const chunk = rs.read();
+  const chunk = rs.read(chunkSize);
   //console.log("read chunk: ", chunk);
   return cb(chunk);
 };
@@ -84,7 +96,7 @@ const isNull = x => x === null || x === undefined;
 const immediately = M => M.lift(Cont)(setImmediate);
 
 // ::(Monad (t Cont!), MonadTrans t) -> NodeRStream -> t Cont! Byte
-const readByte = M => rs => M.lift(Cont)(read(1)(rs));
+const readByte = M => rs => M.lift(Cont)(read()(rs));
 
 // :: (Monad (t Cont!), MonadTrans t) -> NodeRStream -> t Cont! ()
 const waitForReadable = M => rs => M.lift(Cont)(waitForReadableCont(rs));
@@ -109,6 +121,15 @@ const iterateUntilC = M => pred => act => {
   return rec;
 };
 
+// :: Cont! (FilePath, Descriptor)
+const withTempFile = cb => {
+  return tmp.file((error, path, fd, cleanup) => {
+    if (error) throw error;
+    cb([path, fd]);
+    cleanup();
+  });
+};
+
 module.exports = {
   ifElseM,
   isNull,
@@ -122,5 +143,6 @@ module.exports = {
   waitForReadable,
   endOrReadable,
   foreverC,
-  iterateUntilC
+  iterateUntilC,
+  withTempFile
 };

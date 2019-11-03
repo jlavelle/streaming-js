@@ -1,8 +1,11 @@
 const Stream = require("./streaming");
 const FreeT = require("./freet");
+const fs = require("fs");
 const test = require("ava");
+const util = require("./util");
 const {
   Arr,
+  Cont,
   Fnctr: { Identity }
 } = require("@masaeedu/fp");
 
@@ -33,4 +36,15 @@ test("takeWhile", t => {
       Stream.takeWhile(x => x < 4)(Stream.each(Arr)([1, 2, 3, 4, 5, 6]))
     )
   );
+});
+
+test.cb("readBytes", t => {
+  util.withTempFile(([path, _]) => {
+    fs.writeFileSync(path, "this is a test file");
+    const rs = fs.createReadStream(path);
+    Stream.toList(Cont)(Stream.readBytes(rs))(x => {
+      t.snapshot(x.toString("utf8"));
+      t.end();
+    });
+  });
 });
