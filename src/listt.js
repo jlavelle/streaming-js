@@ -30,8 +30,8 @@ const ListT = M => {
         Maybe.match({
           Nothing: Maybe.Nothing,
           Just: ([a, lt]) => Maybe.Just([f(a), map(f)(lt)])
-        })(ma)
-      )
+        })
+      )(ma)
     )(listt);
 
   // Monoid

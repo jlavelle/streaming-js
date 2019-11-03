@@ -3,32 +3,48 @@ const ListT = require("./listt");
 const {
   Arr,
   Maybe,
+  Either,
   Fnctr: { Identity }
 } = require("@masaeedu/fp");
 
 const List = ListT(Identity);
+const ListE = ListT(Either);
 
 const tl = List.fromFoldable(Arr)([1, 2, 3, 4, 5]);
+const tle = ListE.fromFoldable(Arr)([1, 2, 3, 4, 5]);
 
 test("fromFoldable/toArray", t => {
   t.deepEqual([1, 2, 3, 4, 5], List.toArray(tl));
+  t.deepEqual(Either.Right([1, 2, 3, 4, 5]), ListE.toArray(tle));
 });
 
 test("functor", t => {
   t.deepEqual([2, 3, 4, 5, 6], List.toArray(List.map(a => a + 1)(tl)));
+  t.deepEqual(
+    Either.Right([2, 3, 4, 5, 6]),
+    ListE.toArray(ListE.map(a => a + 1)(tle))
+  );
 });
 
 test("applicative", t => {
+  const ex = [2, 3, 4, 5, 6, 3, 4, 5, 6, 7];
+  const f = a => b => a + b;
+  t.deepEqual(ex, List.toArray(List.ap(List.cons(f(1))(List.of(f(2))))(tl)));
   t.deepEqual(
-    [2, 3, 4, 5, 6, 3, 4, 5, 6, 7],
-    List.toArray(List.ap(List.cons(a => a + 1)(List.of(a => a + 2)))(tl))
+    Either.Right(ex),
+    ListE.toArray(ListE.ap(ListE.cons(f(1))(ListE.of(f(2))))(tle))
   );
 });
 
 test("monad", t => {
+  const ex = [2, 3, 3, 4, 4, 5, 5, 6, 6, 7];
   t.deepEqual(
-    [2, 3, 3, 4, 4, 5, 5, 6, 6, 7],
+    ex,
     List.toArray(List.chain(a => List.cons(a + 1)(List.of(a + 2)))(tl))
+  );
+  t.deepEqual(
+    Either.Right(ex),
+    ListE.toArray(ListE.chain(a => ListE.cons(a + 1)(ListE.of(a + 2)))(tle))
   );
 });
 
