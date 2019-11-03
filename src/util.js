@@ -32,7 +32,7 @@ const mkReadStream = path => cb => {
 // :: NodeRStream -> Cont! ()
 const waitForReadableCont = rs => cb => {
   return rs.once("readable", () => {
-    //console.log("is readable");
+    rs.removeAllListeners();
     return cb();
   });
 };
@@ -40,7 +40,7 @@ const waitForReadableCont = rs => cb => {
 // :: NodeRStream -> Cont! ()
 const waitForEndCont = rs => cb => {
   return rs.once("end", () => {
-    //console.log("is ended");
+    rs.removeAllListeners();
     return cb();
   });
 };
