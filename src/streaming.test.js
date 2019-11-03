@@ -69,6 +69,13 @@ test.cb("unfoldrC", t => {
   });
 });
 
+test("forOf", t => {
+  const dup = Stream.forOf(Stream.each(Arr)([1, 2, 3]))(a =>
+    FreeT["*>"](Stream.yields(a))(Stream.yields(a))
+  );
+  t.deepEqual([1, 1, 2, 2, 3, 3], Stream.toList(Identity)(dup));
+});
+
 test.cb("readChunks", t => {
   util.withTempFile(([path, _]) => {
     const ts = "this is a test file";

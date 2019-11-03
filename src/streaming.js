@@ -47,6 +47,10 @@ const unfoldrC = step => seed => pure => bind => {
   return rec(seed);
 };
 
+// :: Stream a m r -> (a -> FreeT f m r) -> FreeT f m r
+const forOf = stream => f => pure => bind =>
+  stream(pure)(xmr => ([a, x]) => f(a)(_ => xmr(x))(bind));
+
 // :: Applicative m -> Stream a m r -> m [a]
 const toList = A => stream =>
   A.map(Of.first)(fold(A)(_ => [])(Arr.Cons)(stream));
@@ -103,6 +107,7 @@ module.exports = {
   fold,
   unfoldr,
   unfoldrC,
+  forOf,
   toList,
   each,
   filter,
