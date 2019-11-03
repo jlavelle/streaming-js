@@ -38,12 +38,24 @@ test("takeWhile", t => {
   );
 });
 
+test.cb("readChunks", t => {
+  util.withTempFile(([path, _]) => {
+    const ts = "this is a test file";
+    fs.writeFileSync(path, ts);
+    const rs = fs.createReadStream(path);
+    Stream.toList(Cont)(Stream.readChunks(ts.length)(rs))(x => {
+      t.snapshot(x.toString("utf8"));
+      t.end();
+    });
+  });
+});
+
 test.cb("readBytes", t => {
   util.withTempFile(([path, _]) => {
     fs.writeFileSync(path, "this is a test file");
     const rs = fs.createReadStream(path);
     Stream.toList(Cont)(Stream.readBytes(rs))(x => {
-      t.snapshot(x.toString("utf8"));
+      t.snapshot(Arr.map(b => b.toString("utf8"))(x));
       t.end();
     });
   });

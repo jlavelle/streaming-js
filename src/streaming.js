@@ -38,11 +38,11 @@ const takeWhile = pred => stream => pure => bind =>
     else return pure(unit);
   });
 
-//:: NodeRStream -> Stream Byte Cont! ()
-const readBytes = rs => {
+//:: Int -> NodeRStream -> Stream Buffer Cont! ()
+const readChunks = size => rs => {
   const whileReadable = mdo(FreeT)(({ chunk }) => [
     () => util.immediately(FreeT),
-    [chunk, () => util.readByte(FreeT)(rs)],
+    [chunk, () => util.readChunk(FreeT)(size)(rs)],
     () => {
       if (util.isNull(chunk)) return endOrRead;
       else return FreeT.chain(_ => whileReadable)(yields(chunk));
@@ -61,6 +61,9 @@ const readBytes = rs => {
   return endOrRead;
 };
 
+//:: NodeRStream -> Stream Byte Cont! ()
+const readBytes = readChunks(1);
+
 // :: Stream a Cont! r -> Cont! r
 const print = stream =>
   stream(Cont.of)(xmr => ([a, x]) => Cont.chain(_ => xmr(x))(util.log(a)));
@@ -72,6 +75,7 @@ module.exports = {
   each,
   filter,
   takeWhile,
+  readChunks,
   readBytes,
   print
 };

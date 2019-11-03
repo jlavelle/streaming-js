@@ -6,7 +6,6 @@ const {
   Unit: { unit },
   Either
 } = require("@masaeedu/fp");
-const FreeT = require("./freet");
 
 // :: Monad m -> m Bool -> (() -> m a) -> (() -> m a) -> m a
 const ifElseM = M => mbool => i => e =>
@@ -45,29 +44,19 @@ const waitForEndCont = rs => cb => {
   });
 };
 
-let c = 0;
-let r = [];
-
 // :: Cont! a -> Cont! b -> Cont! (Either a b)
 const race = conta => contb => cb => {
-  const ctx = c;
-  c += 1;
   let res = undefined;
-  //console.log("race");
   conta(a => {
     if (res === undefined) {
-      res = "Left";
-      r.push(["end", ctx]);
-      //console.log(r);
-      return cb(Either.Left(a));
+      res = Either.Left(a);
+      return cb(res);
     }
   });
   contb(b => {
     if (res === undefined) {
-      res = "Right";
-      r.push(["readable", ctx]);
-      //console.log(r);
-      return cb(Either.Right(b));
+      res = Either.Right(b);
+      return cb(res);
     }
   });
 };
@@ -96,7 +85,7 @@ const isNull = x => x === null || x === undefined;
 const immediately = M => M.lift(Cont)(setImmediate);
 
 // ::(Monad (t Cont!), MonadTrans t) -> NodeRStream -> t Cont! Byte
-const readByte = M => rs => M.lift(Cont)(read()(rs));
+const readChunk = M => chunkSize => rs => M.lift(Cont)(read(chunkSize)(rs));
 
 // :: (Monad (t Cont!), MonadTrans t) -> NodeRStream -> t Cont! ()
 const waitForReadable = M => rs => M.lift(Cont)(waitForReadableCont(rs));
@@ -139,8 +128,9 @@ module.exports = {
   waitForReadableCont,
   log,
   immediately,
-  readByte,
+  readChunk,
   waitForReadable,
+  waitForEnd,
   endOrReadable,
   foreverC,
   iterateUntilC,
