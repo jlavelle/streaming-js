@@ -3,6 +3,7 @@ const Of = require("./of");
 const { Unit, Arr, Cont, Either } = require("@masaeedu/fp");
 const { mdo } = require("@masaeedu/do");
 const util = require("./util");
+const ListT = require("./listt");
 
 const { unit } = Unit;
 
@@ -32,7 +33,7 @@ const unfoldr = M => step => seed => pure => bind => {
 };
 
 // TODO: Make this more general
-// :: (s -> t Cont! (Either r (a, s))) -> s -> Stream a (t Cont!) r
+// :: (s -> Cont! (Either r (a, s))) -> s -> Stream a Cont! r
 const unfoldrC = step => seed => pure => bind => {
   const rec = s =>
     mdo(Cont)(({ e }) => [
@@ -52,8 +53,14 @@ const forOf = stream => f => pure => bind =>
   stream(pure)(xmr => ([a, x]) => f(a)(_ => xmr(x))(bind));
 
 // :: Applicative m -> Stream a m r -> m [a]
-const toList = A => stream =>
+const toArray = A => stream =>
   A.map(Of.first)(fold(A)(_ => [])(Arr.Cons)(stream));
+
+// :: Monad m -> Stream a m r -> ListT m a
+const toListT = A => stream => {
+  const listt = ListT(A);
+  return stream(_ => listt.empty)(xmr => ([a, x]) => listt.cons(a)(xmr(x)));
+};
 
 // :: Foldable f -> f a -> Stream a m ()
 const each = F =>
@@ -108,7 +115,8 @@ module.exports = {
   unfoldr,
   unfoldrC,
   forOf,
-  toList,
+  toArray,
+  toListT,
   each,
   filter,
   takeWhile,
