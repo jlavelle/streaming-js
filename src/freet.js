@@ -1,5 +1,5 @@
-// A Church-encoded free monad transformer,
-// based on https://hackage.haskell.org/package/free-5.1.2/docs/Control-Monad-Trans-Free-Church
+// A free monad transformer,
+// based on https://hackage.haskell.org/package/free-5.1.2/docs/Control-Monad-Trans-Free.html
 
 const {
   Functor,
@@ -9,63 +9,61 @@ const {
   ClassDef,
   Arr
 } = require("@masaeedu/fp");
+const { adt } = require("@masaeedu/adt");
 
-const FreeT = (() => {
-  // type FreeT f m a = forall r. (a -> m r) -> (forall x. (x -> m r) -> f x -> m r) -> m r
+const FreeT = F => M => {
+  // type FreeF f a b = Pure a | Free (f b)
 
-  // :: (forall a. f a -> g a) -> FreeT f m a -> FreeT g m a
-  const hoistF = phi => freet => pure => bind =>
-    freet(pure)(xmr => fx => bind(xmr)(phi(fx)));
+  const FreeFAdt = adt({ Pure: ["a"], Free: ["f b"] });
+  const { Pure, Free, match } = FreeFAdt;
 
-  // :: Monad m -> Monad n -> (forall a. m a -> n a) -> FreeT f m a -> FreeT f n a
-  const hoistM = M => N => phi => freet => pure => bind =>
-    N.join(
-      phi(
-        freet(x => M.of(pure(x)))(xmr => fx =>
-          M.of(bind(x => N.join(phi(xmr(x))))(fx))
-        )
-      )
-    );
+  const FreeF = (() => {
+    const map = f => x => {
+      return match({
+        Pure: a  => Pure(a),
+        Free: fb => Free(F.map(f)(fb))
+      })(x)
+    }
+    return {
+      ...FreeFAdt,
+      map
+    }
+  })();
 
-  // :: Monad m -> FreeT (Compose m f) m r -> FreeT f m r
-  const decompose = M => freet => pure => bind =>
-    freet(pure)(xmr => fx => M.chain(bind(xmr))(fx));
+  // type FreeT f m a = m (FreeF f a (FreeT f m a))
 
   // Functor
-  const map = f => freet => pure => bind => freet(a => pure(f(a)))(bind);
+  const map = f => M.map(match({
+    Pure: a  => Pure(f(a)),
+    Free: fb => Free(F.map(map(f))(fb))
+  }))
 
   // Applicative
-  const of = a => pure => _ => pure(a);
-
-  const ap = freetab => freeta => pure => bind =>
-    freetab(fn => freeta(a => pure(fn(a)))(bind))(bind);
+  const of = a => M.of(Pure(a))
 
   // Monad
-  const chain = afreetb => freeta => pure => bind =>
-    freeta(a => afreetb(a)(pure)(bind))(bind);
+  const chain = amb => M.chain(match({
+    Pure: a => amb(a),
+    Free: fa => M.of(Free(F.map(chain(amb))(fa)))
+  }))
 
-  // MonadTrans
+  const wrap = x => M.of(Free(x))
 
-  const lift = M => m => pure => _ => M.chain(pure)(m);
+  const liftF = f => wrap(F.map(of)(f))
 
-  // MonadFree
+  const lift = c => M.map(Pure)(c)
 
-  // :: f (FreeT f m a) -> FreeT f m a
-  const wrap = f => pure => bind => bind(freet => freet(pure)(bind))(f);
-
-  // :: Functor f -> f a -> FreeT f m a
-  const liftF = F => f => wrap(F.map(of)(f));
-
-  // Interpretation
-
-  // Functor f -> Monad m -> (f (m a) -> m a) -> FreeT f m a -> m a
-  const iterT = F => M => phi => freet =>
-    freet(M.of)(xmr => fx => phi(F.map(xmr)(fx)));
+  const iterT = phi => M.chain(val => {
+    return match({
+      Pure: x => M.of(x),
+      Free: y => phi(y)
+    })(FreeF.map(iterT(phi))(val))
+  })
 
   return {
-    hoistF,
-    hoistM,
-    decompose,
+  //  hoistF,
+  //  hoistM,
+  //  decompose,
     map,
     of,
     ap,
@@ -73,10 +71,11 @@ const FreeT = (() => {
     wrap,
     liftF,
     iterT,
-    lift
+    lift,
+    FreeF
   };
-})();
+};
 
 const classes = Arr.fold(ClassDef)([Functor, Apply, Chain]);
 
-module.exports = implement(classes)(FreeT);
+module.exports = F => M => implement(classes)(FreeT(F)(M));
